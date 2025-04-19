@@ -6,11 +6,12 @@ import java.util.*;
 
 public class GraphLoader {
     public static Graph loadGraphFromFile(String path, int numCriteria) throws IOException {
-        List<String> lines = Files.readAllLines(Paths.get(path));
+        BufferedReader reader = Files.newBufferedReader(Paths.get(path));
+        String line;
         int maxNode = 0;
         List<String[]> parsed = new ArrayList<>();
 
-        for (String line : lines) {
+        while ((line = reader.readLine()) != null)  {
             if (line.trim().isEmpty() || line.startsWith("#")) continue;
             String[] parts = line.trim().split("\\s+");
             parsed.add(parts);

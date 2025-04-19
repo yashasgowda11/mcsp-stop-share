@@ -22,4 +22,4 @@ fi
 
 # === RUN PROGRAM ===
 echo "Running Main.java on dataset: $DATASET"
-java -cp $OUT_DIR core.Main "$DATASET" "$SOURCE_NODE" "$TARGET_NODE" "$CRITERIA" | tee results/log_$(basename $DATASET .txt).txt
+java -Xmx4G -cp $OUT_DIR core.Main "$DATASET" "$SOURCE_NODE" "$TARGET_NODE" "$CRITERIA"
