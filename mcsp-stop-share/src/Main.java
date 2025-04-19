@@ -6,11 +6,13 @@ import java.util.*;
 public class Main {
     public static void main(String[] args) {
         // === CONFIGURATION ===
-        String datasetPath = "data/central_usa.txt"; // Change this to orkut.txt, etc.
         int numCriteria = 3; // Number of weight dimensions (criteria)
-        int source = 0;
-        int target = 100; // Change depending on your dataset
         int maxMemoryPartitions = 5;
+
+        String datasetPath = "data/" + args[0];
+    int source = Integer.parseInt(args[1]);
+    int target = Integer.parseInt(args[2]);
+    int numCriteria = Integer.parseInt(args[3]);
 
         // === LOAD GRAPH FROM FILE ===
         Graph g;
