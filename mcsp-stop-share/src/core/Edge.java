@@ -5,6 +5,7 @@ public class Edge {
     public int from;
     public int to;
     public double[] weights;
+    public double waveWeight = 0.0; 
 
     public Edge(int from, int to, double[] weights) {
         this.from = from;

@@ -2,6 +2,8 @@ package core;
 
 import java.io.IOException;
 import java.util.*;
+import core.Edge;
+import core.Graph;
 
 public class Main {
     public static void main(String[] args) {
@@ -12,7 +14,6 @@ public class Main {
         String datasetPath = "data/" + args[0];
     int source = Integer.parseInt(args[1]);
     int target = Integer.parseInt(args[2]);
-    int numCriteria = Integer.parseInt(args[3]);
 
         // === LOAD GRAPH FROM FILE ===
         Graph g;

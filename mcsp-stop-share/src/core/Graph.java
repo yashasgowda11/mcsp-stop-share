@@ -32,9 +32,7 @@ public class Graph {
         return adjList.keySet();
     }
 
-    public int getNumVertices() {
-        return numVertices;
-    }
+
 
     public void printGraph() {
         for (int v : adjList.keySet()) {
@@ -56,5 +54,9 @@ public class Graph {
                 }
             }
         }
+    }
+
+    public int getNumVertices() {
+        return numVertices;
     }
 }

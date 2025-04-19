@@ -1,9 +1,11 @@
 // src/core/MSTBuilder.java
 import java.util.*;
+import core.Edge;
+import core.Graph;
 
 public class MSTBuilder {
     public static List<Edge> buildMST(Graph graph) {
-        int n = graph.numVertices;
+        int n = graph.getNumVertices();
         boolean[] visited = new boolean[n];
         PriorityQueue<Edge> pq = new PriorityQueue<>(Comparator.comparingDouble(e -> e.waveWeight));
         List<Edge> mstEdges = new ArrayList<>();

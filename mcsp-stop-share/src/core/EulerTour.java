@@ -1,5 +1,7 @@
 // src/core/EulerTour.java
 import java.util.*;
+import core.Edge;
+import core.Graph;
 
 public class EulerTour {
     public static List<Integer> generateTour(List<Edge> mstEdges, int numVertices) {
