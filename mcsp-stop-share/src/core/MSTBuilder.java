@@ -1,4 +1,6 @@
 // src/core/MSTBuilder.java
+package core;
+
 import java.util.*;
 import core.Edge;
 import core.Graph;

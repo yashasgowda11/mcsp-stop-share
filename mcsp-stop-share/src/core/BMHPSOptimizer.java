@@ -12,8 +12,11 @@ public class BMHPSOptimizer {
         OverlayGraph overlay = new OverlayGraph();
 
         for (Map.Entry<Integer, List<Integer>> entry : partitions.entrySet()) {
+            int partitionId = entry.getKey();
             List<Integer> nodes = entry.getValue();
             Set<Integer> boundary = findBoundaryNodes(nodes, graph);
+
+            System.out.println("[BMHPS] Partition " + partitionId + " has " + boundary.size() + " boundary nodes.");
 
             for (int src : boundary) {
                 Map<Integer, Double> shortcut = prunedDijkstra(graph, src, boundary, criterionIndex);

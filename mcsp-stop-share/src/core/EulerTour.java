@@ -1,4 +1,6 @@
 // src/core/EulerTour.java
+package core;
+
 import java.util.*;
 import core.Edge;
 import core.Graph;

@@ -5,12 +5,18 @@ import java.nio.file.*;
 import java.util.*;
 import core.Edge;
 import core.Graph;
+import core.MSTBuilder;
+import core.EulerTour;
+import io.PartitionGenerator;
+import io.PartitionLoader;
+
 
 public class Main {
     public static void main(String[] args) {
         // === CONFIGURATION ===
         int numCriteria = 3; // Number of weight dimensions (criteria)
         int maxMemoryPartitions = 5;
+        int partitionSize = 4; // Number of nodes per partition (Euler tour based)
 
         String datasetName = args[0].replace(".txt", "");
         String datasetPath = "data/" + args[0];
@@ -29,7 +35,7 @@ public class Main {
         System.out.println("Graph loaded with " + g.getNumVertices() + " vertices.");
 
         // === RESULT HEADERS ===
-        String[] algoFiles = {"ohp", "mhp", "bmhp"};
+        String[] algoFiles = {"ohp", "mhp", "bmhp", "bmhps"};
         for (String algo : algoFiles) {
             try {
                 Files.write(Paths.get("results/" + algo + "_results.csv"),
@@ -64,23 +70,32 @@ public class Main {
         long endBMHP = System.currentTimeMillis();
         logResult("bmhp", datasetName, endBMHP - startBMHP, bmhp.getDiskReads(), bmhp.getCacheHits());
 
-        // === RUN BMHPS (Overlay Shortcut Graph) ===
-        System.out.println("\nRunning Shortcut Overlay Optimization (BMHPS)...");
-        Map<Integer, List<Integer>> fakePartitions = new HashMap<>();
-        // Fake partitions for demo — Replace with real partition metadata
-        fakePartitions.put(0, Arrays.asList(0, 1));
-        fakePartitions.put(1, Arrays.asList(2, 3));
-        fakePartitions.put(2, Arrays.asList(4, 5));
+        // === Generate Real Partitions from MST + Euler Tour ===
+        List<Edge> mstEdges = MSTBuilder.buildMST(g);
+        List<Integer> tour = EulerTour.generateTour(mstEdges, g.getNumVertices());
+        PartitionGenerator.writePartitions(tour, partitionSize, "partitions");
 
-        OverlayGraph overlay = BMHPSOptimizer.buildOverlayGraph(fakePartitions, g, 0);
+        // === Load Partitions and Run BMHPS ===
+        System.out.println("\nRunning Shortcut Overlay Optimization (BMHPS)...");
+        Map<Integer, List<Integer>> realPartitions = PartitionLoader.loadFromFolder("partitions");
+
+        long startBMHPS = System.currentTimeMillis();
+        OverlayGraph overlay = BMHPSOptimizer.buildOverlayGraph(realPartitions, g, 0);
+        long endBMHPS = System.currentTimeMillis();
+
         System.out.println("Overlay Graph Shortcuts:");
+        int shortcutCount = 0;
         for (int u : overlay.getNodes()) {
             for (Edge e : overlay.getEdges(u)) {
                 if (u < e.to) {
+                    shortcutCount++;
                     System.out.println(u + " <-> " + e.to + " weight=" + e.weights[0]);
                 }
             }
         }
+
+        // Log BMHPS results
+        logResult("bmhps", datasetName, endBMHPS - startBMHPS, overlay.getNodes().size(), shortcutCount);
     }
 
     private static void logResult(String algo, String dataset, long time, int io, int cache) {

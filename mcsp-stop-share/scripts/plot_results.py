@@ -21,14 +21,15 @@ def load_data():
     all_data = []
     for algo in ALGORITHMS:
         file = os.path.join(DATA_DIR, f"{algo.lower()}_results.csv")
-        if not os.path.exists(file):
-            print(f"Warning: File not found: {file}")
+        if not os.path.exists(file) or os.path.getsize(file) == 0:
+            print(f"Warning: File missing or empty: {file}")
             continue
         df = pd.read_csv(file)
         df["Algorithm"] = algo
         all_data.append(df)
-    combined = pd.concat(all_data, ignore_index=True)
-    return combined
+    if not all_data:
+        raise ValueError("No data found to plot.")
+    return pd.concat(all_data, ignore_index=True)
 
 # === Plot Function (Bar Plot) ===
 def plot_metric(metric, title):
