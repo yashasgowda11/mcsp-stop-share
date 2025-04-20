@@ -11,6 +11,16 @@ public class MHPAlgorithm {
     private final int source;
     private final int target;
     private final int maxMemoryPartitions;
+    private int diskReads = 0;
+    private int cacheHits = 0;
+
+    public int getDiskReads() {
+        return diskReads;
+    }
+
+    public int getCacheHits() {
+        return cacheHits;
+    }
 
     public MHPAlgorithm(Graph graph, int numCriteria, int source, int target, int maxMemoryPartitions) {
         this.graph = graph;
@@ -90,6 +100,9 @@ public class MHPAlgorithm {
 
             if (allEmpty) break;
         }
+
+        diskReads = inMemory.size();
+        cacheHits = sharedAccess.size();
 
         System.out.println("\n[MHP] Total Partitions Accessed: " + ioHits);
         System.out.println("[MHP] Shared Partition Access: " + sharedAccess.size());

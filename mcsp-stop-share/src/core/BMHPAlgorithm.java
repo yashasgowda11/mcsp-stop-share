@@ -11,6 +11,16 @@ public class BMHPAlgorithm {
     private final int source;
     private final int target;
     private final int maxMemoryPartitions;
+    private int diskReads = 0;
+    private int cacheHits = 0;
+
+    public int getDiskReads() {
+        return diskReads;
+    }
+
+    public int getCacheHits() {
+        return cacheHits;
+    }
 
     public BMHPAlgorithm(Graph graph, int numCriteria, int source, int target, int maxMemoryPartitions) {
         this.graph = graph;
@@ -32,6 +42,9 @@ public class BMHPAlgorithm {
         Set<Integer> inMemory = new LinkedHashSet<>();
         double[] bestCosts = new double[numCriteria];
         Arrays.fill(bestCosts, Double.MAX_VALUE);
+
+        Map<Integer, Set<Integer>> partitionUsers = new HashMap<>();
+        Set<Integer> sharedPartitions = new HashSet<>();
 
         for (int i = 0; i < numCriteria; i++) {
             fwdQueues[i] = new PriorityQueue<>();
@@ -83,6 +96,8 @@ public class BMHPAlgorithm {
                         }
                     }
 
+                    partitionUsers.computeIfAbsent(partition, k -> new HashSet<>()).add(i);
+
                     for (Edge e : graph.getEdges(v)) {
                         int neighbor = e.to;
                         double newCost = state.cost + e.weights[i];
@@ -114,6 +129,8 @@ public class BMHPAlgorithm {
                         }
                     }
 
+                    partitionUsers.computeIfAbsent(partition, k -> new HashSet<>()).add(i);
+
                     for (Edge e : graph.getEdges(v)) {
                         int neighbor = e.to;
                         double newCost = state.cost + e.weights[i];
@@ -131,10 +148,21 @@ public class BMHPAlgorithm {
             if (allDone) break;
         }
 
+        for (Map.Entry<Integer, Set<Integer>> entry : partitionUsers.entrySet()) {
+            if (entry.getValue().size() > 1) {
+                sharedPartitions.add(entry.getKey());
+            }
+        }
+
         for (int i = 0; i < numCriteria; i++) {
             System.out.println("Criterion " + i + " Best Path Cost: " + bestCosts[i]);
         }
 
+        diskReads = inMemory.size();
+        cacheHits = sharedPartitions.size();
+
         System.out.println("\n[BMHP] Total I/O Hits: " + ioHits);
+        System.out.println("[BMHP] Shared Partition Access: " + cacheHits);
+        System.out.println("[BMHP] Partitions with Shared Access: " + sharedPartitions);
     }
 }

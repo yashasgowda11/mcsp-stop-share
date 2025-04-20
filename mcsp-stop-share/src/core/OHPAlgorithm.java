@@ -11,6 +11,16 @@ public class OHPAlgorithm {
     private final int numCriteria;
     private final int source;
     private final int target;
+    private int diskReads = 0;
+private int cacheHits = 0;
+
+public int getDiskReads() {
+    return diskReads;
+}
+
+public int getCacheHits() {
+    return cacheHits;
+}
 
     public OHPAlgorithm(Graph graph, int numCriteria, int source, int target) {
         this.graph = graph;
@@ -75,6 +85,10 @@ public class OHPAlgorithm {
         }
 
         ioHits = partitionsAccessed.size();
+
+        
+    diskReads = partitionsAccessed.size();
+    cacheHits = sharedAccess.size();
 
         System.out.println("\nTotal Partitions Accessed: " + ioHits);
         System.out.println("Shared Partitions (I/O optimization): " + sharedAccess.size());
