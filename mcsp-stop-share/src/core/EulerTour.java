@@ -7,6 +7,7 @@ import core.Graph;
 
 public class EulerTour {
     public static List<Integer> generateTour(List<Edge> mstEdges, int numVertices) {
+        // Build undirected tree from MST edges
         Map<Integer, List<Integer>> tree = new HashMap<>();
         for (Edge e : mstEdges) {
             tree.computeIfAbsent(e.from, k -> new ArrayList<>()).add(e.to);
@@ -15,18 +16,35 @@ public class EulerTour {
 
         List<Integer> tour = new ArrayList<>();
         Set<Integer> visited = new HashSet<>();
-        dfs(0, tree, visited, tour);
-        return tour;
-    }
+        Deque<int[]> stack = new ArrayDeque<>();
 
-    private static void dfs(int node, Map<Integer, List<Integer>> tree, Set<Integer> visited, List<Integer> tour) {
-        visited.add(node);
-        tour.add(node);
-        for (int neighbor : tree.getOrDefault(node, new ArrayList<>())) {
-            if (!visited.contains(neighbor)) {
-                dfs(neighbor, tree, visited, tour);
-                tour.add(node); // backtrack
+        stack.push(new int[]{0, -1});  // start from node 0, parent -1
+
+        while (!stack.isEmpty()) {
+            int[] pair = stack.pop();
+            int node = pair[0];
+            int parent = pair[1];
+
+            if (visited.contains(node)) {
+                // this is a backtrack — record revisit
+                tour.add(node);
+                continue;
+            }
+
+            visited.add(node);
+            tour.add(node);
+
+            stack.push(new int[]{node, parent});  // push revisit marker
+
+            List<Integer> neighbors = tree.getOrDefault(node, Collections.emptyList());
+            for (int i = neighbors.size() - 1; i >= 0; i--) {
+                int neighbor = neighbors.get(i);
+                if (neighbor != parent) {
+                    stack.push(new int[]{neighbor, node});
+                }
             }
         }
+
+        return tour;
     }
 }
