@@ -7,30 +7,26 @@ import core.Graph;
 
 public class MSTBuilder {
     public static List<Edge> buildMST(Graph graph) {
-        int n = graph.getNumVertices();
-        boolean[] visited = new boolean[n];
-        PriorityQueue<Edge> pq = new PriorityQueue<>(Comparator.comparingDouble(e -> e.waveWeight));
         List<Edge> mstEdges = new ArrayList<>();
-
+        boolean[] visited = new boolean[graph.getNumVertices()];
+        PriorityQueue<Edge> pq = new PriorityQueue<>(Comparator.comparingDouble(e -> e.weights[0]));
+    
         visited[0] = true;
         pq.addAll(graph.getEdges(0));
-
+    
         while (!pq.isEmpty()) {
             Edge edge = pq.poll();
-            int u = edge.from;
-            int v = edge.to;
-            if (visited[u] && visited[v]) continue;
-
+            if (visited[edge.to]) continue;
+    
+            visited[edge.to] = true;
             mstEdges.add(edge);
-            int next = visited[u] ? v : u;
-            visited[next] = true;
-            for (Edge e : graph.getEdges(next)) {
-                int neighbor = e.from == next ? e.to : e.from;
-                if (!visited[neighbor]) {
-                    pq.add(e);
-                }
+    
+            for (Edge e : graph.getEdges(edge.to)) {
+                if (!visited[e.to]) pq.add(e);
             }
         }
+    
         return mstEdges;
     }
+    
 }
