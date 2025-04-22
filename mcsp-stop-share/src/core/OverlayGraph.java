@@ -10,10 +10,9 @@ public class OverlayGraph {
         this.adj = new HashMap<>();
     }
 
-    public void addEdge(int from, int to, double weight) {
-        Edge e = new Edge(from, to, new double[]{weight}); // 1D weight for shortcut
-        adj.computeIfAbsent(from, k -> new ArrayList<>()).add(e);
-        adj.computeIfAbsent(to, k -> new ArrayList<>()).add(new Edge(to, from, new double[]{weight}));
+    public void addEdge(int u, int v, double[] weights) {
+        if (!adj.containsKey(u)) adj.put(u, new ArrayList<>());
+        adj.get(u).add(new Edge(u, v, weights)); 
     }
 
     public List<Edge> getEdges(int node) {

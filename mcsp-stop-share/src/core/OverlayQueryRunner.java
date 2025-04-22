@@ -1,25 +1,12 @@
 // src/core/OverlayQueryRunner.java
 package core;
 
-import model.State;
 import java.util.*;
+import model.State;
 
 public class OverlayQueryRunner {
 
-    // Run multi-criteria shortest path query over overlay
-    public static double[] runMultiCriteriaQuery(OverlayGraph overlay, int source, int target, int numCriteria) {
-        double[] resultCosts = new double[numCriteria];
-        Arrays.fill(resultCosts, Double.POSITIVE_INFINITY);
-
-        for (int i = 0; i < numCriteria; i++) {
-            resultCosts[i] = runQuery(overlay, source, target, i);
-        }
-
-        return resultCosts;
-    }
-
-    // Run single-criterion query using Dijkstra
-    public static double runQuery(OverlayGraph overlay, int source, int target, int criterionIndex) {
+    public static double runQuery(OverlayGraph overlay, int source, int target, int index) {
         PriorityQueue<State> pq = new PriorityQueue<>();
         Set<Integer> visited = new HashSet<>();
         Map<Integer, Double> dist = new HashMap<>();
@@ -28,26 +15,34 @@ public class OverlayQueryRunner {
         dist.put(source, 0.0);
 
         while (!pq.isEmpty()) {
-            State current = pq.poll();
-            int u = current.vertex;
-
-            if (u == target) {
-                return current.cost;
-            }
+            State curr = pq.poll();
+            int u = curr.vertex;
 
             if (visited.contains(u)) continue;
             visited.add(u);
 
+            if (u == target) return curr.cost;
+
             for (Edge edge : overlay.getEdges(u)) {
                 int v = edge.to;
-                double cost = current.cost + edge.weights[criterionIndex];
-                if (!dist.containsKey(v) || cost < dist.get(v)) {
-                    dist.put(v, cost);
-                    pq.offer(new State(v, cost));
+                double cost = edge.weights.length > index ? edge.weights[index] : edge.weights[0];
+                double newDist = curr.cost + cost;
+
+                if (!dist.containsKey(v) || newDist < dist.get(v)) {
+                    dist.put(v, newDist);
+                    pq.offer(new State(v, newDist));
                 }
             }
         }
 
-        return Double.POSITIVE_INFINITY; // target not reachable
+        return Double.POSITIVE_INFINITY;
     }
-}
+
+    public static double[] runMultiCriteriaQuery(OverlayGraph overlay, int source, int target, int numCriteria) {
+        double[] results = new double[numCriteria];
+        for (int i = 0; i < numCriteria; i++) {
+            results[i] = runQuery(overlay, source, target, i);
+        }
+        return results;
+    }
+} 

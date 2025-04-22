@@ -155,7 +155,7 @@ public class BMHPAlgorithm {
         }
 
         for (int i = 0; i < numCriteria; i++) {
-            System.out.println("Criterion " + i + " Best Path Cost: " + bestCosts[i]);
+            System.out.println("[BMHP] Criterion " + i + " Best Path Cost: " + bestCosts[i]);
         }
 
         diskReads = inMemory.size();
@@ -163,6 +163,6 @@ public class BMHPAlgorithm {
 
         System.out.println("\n[BMHP] Total I/O Hits: " + ioHits);
         System.out.println("[BMHP] Shared Partition Access: " + cacheHits);
-        System.out.println("[BMHP] Partitions with Shared Access: " + sharedPartitions);
+        //System.out.println("[BMHP] Partitions with Shared Access: " + sharedPartitions);
     }
 }

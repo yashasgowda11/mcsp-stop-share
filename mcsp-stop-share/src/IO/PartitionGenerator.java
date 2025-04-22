@@ -4,53 +4,21 @@ package io;
 import java.io.*;
 import java.nio.file.*;
 import java.util.*;
-import java.util.concurrent.*;
 
 public class PartitionGenerator {
-
-    private static final int THREAD_COUNT = Runtime.getRuntime().availableProcessors();
-
-    public static void writePartitions(List<Integer> tour, int partitionSize, String folder) {
+    public static void writePartitions(List<Integer> tour, int partitionSize, String outputFolder) {
         try {
-            Files.createDirectories(Paths.get(folder));
-        } catch (IOException e) {
-            System.err.println("[PartitionGenerator] Could not create directory: " + e.getMessage());
-            return;
-        }
-
-        int numPartitions = (int) Math.ceil(tour.size() / (double) partitionSize);
-        ExecutorService executor = Executors.newFixedThreadPool(THREAD_COUNT);
-        List<Future<?>> futures = new ArrayList<>();
-
-        for (int i = 0; i < numPartitions; i++) {
-            final int partitionId = i;
-            futures.add(executor.submit(() -> {
-                int start = partitionId * partitionSize;
-                int end = Math.min(start + partitionSize, tour.size());
-                List<Integer> partition = tour.subList(start, end);
-
-                if (partition.size() < 3) return; // skip tiny partitions
-
-                Path filePath = Paths.get(folder, "partition_" + partitionId + ".txt");
-                try (BufferedWriter writer = Files.newBufferedWriter(filePath)) {
-                    for (int node : partition) {
-                        writer.write(node + "\n");
-                    }
-                } catch (IOException e) {
-                    System.err.println("[PartitionGenerator] Failed to write partition " + partitionId + ": " + e.getMessage());
-                }
-            }));
-        }
-
-        for (Future<?> future : futures) {
-            try {
-                future.get();
-            } catch (InterruptedException | ExecutionException e) {
-                System.err.println("[PartitionGenerator] Error in thread: " + e.getMessage());
+            Files.createDirectories(Paths.get(outputFolder));
+            int partitionId = 0;
+            for (int i = 0; i < tour.size(); i += partitionSize) {
+                List<Integer> part = tour.subList(i, Math.min(i + partitionSize, tour.size()));
+                Path outFile = Paths.get(outputFolder, "partition_" + partitionId + ".txt");
+                Files.write(outFile, () -> part.stream().<CharSequence>map(String::valueOf).iterator());
+                partitionId++;
             }
+            System.out.println("[PartitionGenerator] Wrote " + partitionId + " partition files.");
+        } catch (IOException e) {
+            System.err.println("Error writing partitions: " + e.getMessage());
         }
-
-        executor.shutdown();
-        System.out.println("[PartitionGenerator] Wrote " + numPartitions + " partition files (size: " + partitionSize + ").");
     }
 }

@@ -63,7 +63,7 @@ public class MHPAlgorithm {
                             Iterator<Integer> it = inMemory.iterator();
                             int evicted = it.next();
                             it.remove();
-                            System.out.println("Evicting partition: " + evicted);
+                            //System.out.println("Evicting partition: " + evicted);
                         }
                     }
 
@@ -78,7 +78,7 @@ public class MHPAlgorithm {
                     visited[i].add(state.vertex);
 
                     if (state.vertex == target) {
-                        System.out.println("Criterion " + i + " reached target.");
+                        System.out.println("[MHP] Criterion " + i + " reached target.");
                         break;
                     }
 
@@ -106,6 +106,6 @@ public class MHPAlgorithm {
 
         System.out.println("\n[MHP] Total Partitions Accessed: " + ioHits);
         System.out.println("[MHP] Shared Partition Access: " + sharedAccess.size());
-        System.out.println("[MHP] Partitions with Shared Access: " + sharedAccess);
+        //System.out.println("[MHP] Partitions with Shared Access: " + sharedAccess);
     }
 }

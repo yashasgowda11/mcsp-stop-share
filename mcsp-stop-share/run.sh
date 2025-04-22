@@ -20,7 +20,7 @@ fi
 
 # === RUN JAVA PROGRAM ===
 echo "Running Main.java on dataset: $DATASET"
-java -Xmx4G -cp "$OUT_DIR" "$JAVA_MAIN" "$DATASET"
+java -Xmx16G -cp "$OUT_DIR" "$JAVA_MAIN" "$DATASET"
 
 # === OPTIONAL: REGENERATE DATASET ===
 # Uncomment the following line to regenerate the dataset
