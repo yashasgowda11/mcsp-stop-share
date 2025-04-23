@@ -151,10 +151,15 @@ Must show Java 8 or later.
 This project has been tested on large-scale graph datasets from both social networks and road networks. Below are the supported datasets and their sources:
 
 UK-2007 (Synthetic_sf)	Web graph of the .uk domain	(https://chato.cl/webspam/datasets/uk2007/links/) 
+
 Wikipedia (Wikipedia)	Wikipedia article hyperlink graph	SNAP  (https://snap.stanford.edu/data/wikipedia-article-networks.html)
+
 Orkut(Orkut)	Social network from Orkut platform	SNAP  (https://snap.stanford.edu/data/com-Orkut.html)
+
 Twitter(twitter)	Ego networks from Twitter	SNAP  (https://snap.stanford.edu/data/ego-Twitter.html)
+
 California	Road network of California	SNAP  (https://snap.stanford.edu/data/roadNet-CA.html)
+
 Texas	Road network of Texas	SNAP  (https://snap.stanford.edu/data/roadNet-TX.html)
 
 ## 📦 Python (for evaluation plots)
