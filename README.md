@@ -74,8 +74,8 @@ You can simplify the compilation and execution process using the provided run.sh
 ## 🔧 Usage
     ./run.sh [dataset.txt] [num_criteria] [max_memory_partitions] [partition_size] [--regen]
 
-dataset.txt	 - Graph file (e.g., central_usa.txt, placed in data/)
-num_criteria - Number of edge weight criteria (default: 3)
+dataset.txt	 - Graph file (e.g., central_usa.txt, synthetic_sf.txt, wikipedia.txt, twitter.txt, orkut.txt)
+num_criteria - Number of edge weight criteria (default: 3 and Max: 3)
 max_memory_partitions	- Max number of partitions to keep in memory (default: 50)
 partition_size	- Partition size for disk-based partitioning (default: 200)
 --regen	- Optional flag to force regeneration of partitions and Overlay
@@ -151,9 +151,9 @@ Must show Java 8 or later.
 This project has been tested on large-scale graph datasets from both social networks and road networks. Below are the supported datasets and their sources:
 
 UK-2007 (Synthetic_sf)	Web graph of the .uk domain	(https://chato.cl/webspam/datasets/uk2007/links/) 
-Wikipedia	Wikipedia article hyperlink graph	SNAP  (https://snap.stanford.edu/data/wikipedia-article-networks.html)
-Orkut	Social network from Orkut platform	SNAP  (https://snap.stanford.edu/data/com-Orkut.html)
-Twitter	Ego networks from Twitter	SNAP  (https://snap.stanford.edu/data/ego-Twitter.html)
+Wikipedia (Wikipedia)	Wikipedia article hyperlink graph	SNAP  (https://snap.stanford.edu/data/wikipedia-article-networks.html)
+Orkut(Orkut)	Social network from Orkut platform	SNAP  (https://snap.stanford.edu/data/com-Orkut.html)
+Twitter(twitter)	Ego networks from Twitter	SNAP  (https://snap.stanford.edu/data/ego-Twitter.html)
 California	Road network of California	SNAP  (https://snap.stanford.edu/data/roadNet-CA.html)
 Texas	Road network of Texas	SNAP  (https://snap.stanford.edu/data/roadNet-TX.html)
 
