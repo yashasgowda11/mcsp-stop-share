@@ -6,43 +6,47 @@ import model.State;
 
 public class OverlayQueryRunner {
 
-    public static double runQuery(OverlayGraph overlay, int source, int target, int index) {
-        PriorityQueue<State> pq = new PriorityQueue<>();
-        Set<Integer> visited = new HashSet<>();
-        Map<Integer, Double> dist = new HashMap<>();
+    // Runs Dijkstra's algorithm on the overlay graph for each criterion independently
+    public static double[] runMultiCriteriaQuery(OverlayGraph overlay, int source, int target, int numCriteria) {
+        double[] result = new double[numCriteria];
+        Arrays.fill(result, Double.POSITIVE_INFINITY); // Initialize results with infinity
 
-        pq.offer(new State(source, 0));
+        // Run Dijkstra for each cost dimension
+        for (int i = 0; i < numCriteria; i++) {
+            result[i] = dijkstra(overlay, source, target, i);
+        }
+
+        return result;
+    }
+
+    // Dijkstra's algorithm for a single criterion (by index)
+    private static double dijkstra(OverlayGraph overlay, int source, int target, int index) {
+        Map<Integer, Double> dist = new HashMap<>();               // Distance map
+        PriorityQueue<State> pq = new PriorityQueue<>();           // Min-heap priority queue
         dist.put(source, 0.0);
+        pq.offer(new State(source, 0));
 
         while (!pq.isEmpty()) {
             State curr = pq.poll();
             int u = curr.vertex;
+            double cost = curr.cost;
 
-            if (visited.contains(u)) continue;
-            visited.add(u);
+            if (u == target) return cost; // Reached target
 
-            if (u == target) return curr.cost;
+            for (Edge e : overlay.getEdges(u)) {
+                int v = e.to;
+                // Safely retrieve weight for the given criterion index
+                double w = e.weights.length > index ? e.weights[index] : Double.POSITIVE_INFINITY;
+                double newCost = cost + w;
 
-            for (Edge edge : overlay.getEdges(u)) {
-                int v = edge.to;
-                double cost = edge.weights.length > index ? edge.weights[index] : edge.weights[0];
-                double newDist = curr.cost + cost;
-
-                if (!dist.containsKey(v) || newDist < dist.get(v)) {
-                    dist.put(v, newDist);
-                    pq.offer(new State(v, newDist));
+                // Relaxation step
+                if (!dist.containsKey(v) || newCost < dist.get(v)) {
+                    dist.put(v, newCost);
+                    pq.offer(new State(v, newCost));
                 }
             }
         }
 
-        return Double.POSITIVE_INFINITY;
+        return Double.POSITIVE_INFINITY; // Return infinity if target is unreachable
     }
-
-    public static double[] runMultiCriteriaQuery(OverlayGraph overlay, int source, int target, int numCriteria) {
-        double[] results = new double[numCriteria];
-        for (int i = 0; i < numCriteria; i++) {
-            results[i] = runQuery(overlay, source, target, i);
-        }
-        return results;
-    }
-} 
+}

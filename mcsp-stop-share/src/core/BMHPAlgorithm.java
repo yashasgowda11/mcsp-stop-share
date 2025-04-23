@@ -1,26 +1,18 @@
-// src/core/BMHPAlgorithm.java
 package core;
 
 import model.State;
-
 import java.util.*;
 
 public class BMHPAlgorithm {
-    private final Graph graph;
-    private final int numCriteria;
-    private final int source;
-    private final int target;
-    private final int maxMemoryPartitions;
-    private int diskReads = 0;
-    private int cacheHits = 0;
+    private final Graph graph; // Input graph
+    private final int numCriteria; // Number of criteria (e.g., cost dimensions)
+    private final int source; // Source vertex
+    private final int target; // Target vertex
+    private final int maxMemoryPartitions; // Constraint for memory (unused in this class)
 
-    public int getDiskReads() {
-        return diskReads;
-    }
-
-    public int getCacheHits() {
-        return cacheHits;
-    }
+    private int diskReads = 0; // Counter for number of disk reads
+    private int cacheHits = 0; // Counter for number of cache hits
+    private double[] costs; // Stores shortest path cost for each criterion
 
     public BMHPAlgorithm(Graph graph, int numCriteria, int source, int target, int maxMemoryPartitions) {
         this.graph = graph;
@@ -28,141 +20,91 @@ public class BMHPAlgorithm {
         this.source = source;
         this.target = target;
         this.maxMemoryPartitions = maxMemoryPartitions;
+        this.costs = new double[numCriteria];
+        Arrays.fill(costs, Double.POSITIVE_INFINITY); // Initialize all costs to infinity
     }
 
     public void run() {
-        PriorityQueue<State>[] fwdQueues = new PriorityQueue[numCriteria];
-        PriorityQueue<State>[] revQueues = new PriorityQueue[numCriteria];
-        Set<Integer>[] fwdVisited = new Set[numCriteria];
-        Set<Integer>[] revVisited = new Set[numCriteria];
-        Map<Integer, Double>[] fwdDist = new Map[numCriteria];
-        Map<Integer, Double>[] revDist = new Map[numCriteria];
-
-        int ioHits = 0;
-        Set<Integer> inMemory = new LinkedHashSet<>();
-        double[] bestCosts = new double[numCriteria];
-        Arrays.fill(bestCosts, Double.MAX_VALUE);
-
-        Map<Integer, Set<Integer>> partitionUsers = new HashMap<>();
-        Set<Integer> sharedPartitions = new HashSet<>();
-
         for (int i = 0; i < numCriteria; i++) {
-            fwdQueues[i] = new PriorityQueue<>();
-            revQueues[i] = new PriorityQueue<>();
-            fwdVisited[i] = new HashSet<>();
-            revVisited[i] = new HashSet<>();
-            fwdDist[i] = new HashMap<>();
-            revDist[i] = new HashMap<>();
+            // Priority queues for forward and backward Dijkstra
+            PriorityQueue<State> forwardPQ = new PriorityQueue<>();
+            PriorityQueue<State> backwardPQ = new PriorityQueue<>();
 
-            fwdQueues[i].offer(new State(source, 0));
-            revQueues[i].offer(new State(target, 0));
-            fwdDist[i].put(source, 0.0);
-            revDist[i].put(target, 0.0);
-        }
+            // Distance maps
+            Map<Integer, Double> forwardDist = new HashMap<>();
+            Map<Integer, Double> backwardDist = new HashMap<>();
 
-        boolean[] terminated = new boolean[numCriteria];
+            // Sets to track visited nodes
+            Set<Integer> forwardVisited = new HashSet<>();
+            Set<Integer> backwardVisited = new HashSet<>();
 
-        while (true) {
-            boolean allDone = true;
+            // Initialize source and target
+            forwardPQ.offer(new State(source, 0));
+            backwardPQ.offer(new State(target, 0));
+            forwardDist.put(source, 0.0);
+            backwardDist.put(target, 0.0);
 
-            for (int i = 0; i < numCriteria; i++) {
-                if (terminated[i]) continue;
-                allDone = false;
+            double bestCost = Double.POSITIVE_INFINITY;
 
-                double fwdTop = fwdQueues[i].isEmpty() ? Double.MAX_VALUE : fwdQueues[i].peek().cost;
-                double revTop = revQueues[i].isEmpty() ? Double.MAX_VALUE : revQueues[i].peek().cost;
+            // Bidirectional search loop
+            while (!forwardPQ.isEmpty() && !backwardPQ.isEmpty()) {
+                expandLayer(forwardPQ, forwardDist, forwardVisited, backwardDist, i);
+                expandLayer(backwardPQ, backwardDist, backwardVisited, forwardDist, i);
 
-                if (fwdTop + revTop > bestCosts[i]) {
-                    terminated[i] = true;
-                    System.out.println("Criterion " + i + " terminated: bestCost = " + bestCosts[i]);
-                    continue;
-                }
-
-                // Forward expansion
-                if (!fwdQueues[i].isEmpty()) {
-                    State state = fwdQueues[i].poll();
-                    int v = state.vertex;
-                    if (fwdVisited[i].contains(v)) continue;
-                    fwdVisited[i].add(v);
-
-                    int partition = v / 2;
-                    if (!inMemory.contains(partition)) {
-                        inMemory.add(partition);
-                        ioHits++;
-                        if (inMemory.size() > maxMemoryPartitions) {
-                            Iterator<Integer> it = inMemory.iterator();
-                            it.next();
-                            it.remove();
-                        }
-                    }
-
-                    partitionUsers.computeIfAbsent(partition, k -> new HashSet<>()).add(i);
-
-                    for (Edge e : graph.getEdges(v)) {
-                        int neighbor = e.to;
-                        double newCost = state.cost + e.weights[i];
-                        if (!fwdDist[i].containsKey(neighbor) || newCost < fwdDist[i].get(neighbor)) {
-                            fwdDist[i].put(neighbor, newCost);
-                            fwdQueues[i].offer(new State(neighbor, newCost));
-                            if (revDist[i].containsKey(neighbor)) {
-                                bestCosts[i] = Math.min(bestCosts[i], newCost + revDist[i].get(neighbor));
-                            }
-                        }
+                // Check for overlap between forward and backward searches
+                for (int node : forwardVisited) {
+                    if (backwardVisited.contains(node)) {
+                        double potentialCost = forwardDist.get(node) + backwardDist.get(node);
+                        if (potentialCost < bestCost) bestCost = potentialCost;
                     }
                 }
 
-                // Reverse expansion
-                if (!revQueues[i].isEmpty()) {
-                    State state = revQueues[i].poll();
-                    int v = state.vertex;
-                    if (revVisited[i].contains(v)) continue;
-                    revVisited[i].add(v);
-
-                    int partition = v / 2;
-                    if (!inMemory.contains(partition)) {
-                        inMemory.add(partition);
-                        ioHits++;
-                        if (inMemory.size() > maxMemoryPartitions) {
-                            Iterator<Integer> it = inMemory.iterator();
-                            it.next();
-                            it.remove();
-                        }
-                    }
-
-                    partitionUsers.computeIfAbsent(partition, k -> new HashSet<>()).add(i);
-
-                    for (Edge e : graph.getEdges(v)) {
-                        int neighbor = e.to;
-                        double newCost = state.cost + e.weights[i];
-                        if (!revDist[i].containsKey(neighbor) || newCost < revDist[i].get(neighbor)) {
-                            revDist[i].put(neighbor, newCost);
-                            revQueues[i].offer(new State(neighbor, newCost));
-                            if (fwdDist[i].containsKey(neighbor)) {
-                                bestCosts[i] = Math.min(bestCosts[i], newCost + fwdDist[i].get(neighbor));
-                            }
-                        }
-                    }
-                }
+                if (bestCost < Double.POSITIVE_INFINITY) break; // Stop early if path is found
             }
 
-            if (allDone) break;
+            costs[i] = bestCost; // Save best cost for this criterion
         }
+    }
 
-        for (Map.Entry<Integer, Set<Integer>> entry : partitionUsers.entrySet()) {
-            if (entry.getValue().size() > 1) {
-                sharedPartitions.add(entry.getKey());
+    // Expands one layer of Dijkstra search in either direction
+    private void expandLayer(PriorityQueue<State> pq, Map<Integer, Double> dist, Set<Integer> visited,
+                             Map<Integer, Double> oppositeDist, int index) {
+        if (pq.isEmpty()) return;
+
+        State curr = pq.poll();
+        int u = curr.vertex;
+        double cost = curr.cost;
+
+        if (visited.contains(u)) return;
+        visited.add(u);
+
+        for (Edge edge : graph.getEdges(u)) {
+            diskReads++; // Simulate a disk read
+            int v = edge.to;
+            double weight = edge.weights[index];
+            double newCost = cost + weight;
+
+            if (!dist.containsKey(v) || newCost < dist.get(v)) {
+                dist.put(v, newCost);
+                pq.offer(new State(v, newCost));
+            } else {
+                cacheHits++; // Simulate cache hit if no update
             }
         }
+    }
 
-        for (int i = 0; i < numCriteria; i++) {
-            System.out.println("[BMHP] Criterion " + i + " Best Path Cost: " + bestCosts[i]);
-        }
+    // Returns final costs after run
+    public double[] getCosts() {
+        return costs;
+    }
 
-        diskReads = inMemory.size();
-        cacheHits = sharedPartitions.size();
+    // Returns total disk reads
+    public int getDiskReads() {
+        return diskReads;
+    }
 
-        System.out.println("\n[BMHP] Total I/O Hits: " + ioHits);
-        System.out.println("[BMHP] Shared Partition Access: " + cacheHits);
-        //System.out.println("[BMHP] Partitions with Shared Access: " + sharedPartitions);
+    // Returns total cache hits
+    public int getCacheHits() {
+        return cacheHits;
     }
 }

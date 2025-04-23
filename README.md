@@ -50,21 +50,49 @@ Constructs an overlay graph G~
 
 ▶️ Step 2: Run the Project
 
-    java -cp out core.Main central_usa.txt 0 100 3
+    java -Xmx16G -cp out core.Main synthetic_sf.txt 3 50 200 --regen
 
 Parameters:
 
-central_usa.txt: Dataset file (place in data/ folder)
-
-0: Source node ID
-
-100: Target node ID
-
+synthetic_sf.txt: Dataset file (place in data/ folder)
 3: Number of edge weight criteria
+50: Memory Partitions(Alpha)
+200: Boundaries (Nue)
+--regen: To regenrate partitions and overlays
 
 🖱 Or simply use the run script:
 
     ./run.sh
+
+You can simplify the compilation and execution process using the provided run.sh script. This script:
+
+ Compiles all Java source files
+ Executes the MCSP query with your specified parameters
+ Optionally regenerates partitions
+ Generates plots (if results are available)
+
+## 🔧 Usage
+    ./run.sh [dataset.txt] [num_criteria] [max_memory_partitions] [partition_size] [--regen]
+
+dataset.txt	 - Graph file (e.g., central_usa.txt, placed in data/)
+num_criteria - Number of edge weight criteria (default: 3)
+max_memory_partitions	- Max number of partitions to keep in memory (default: 50)
+partition_size	- Partition size for disk-based partitioning (default: 200)
+--regen	- Optional flag to force regeneration of partitions and Overlay
+
+## ✅ Example
+
+    ./run.sh central_usa.txt 3 50 200 --regen
+
+This compiles the code, runs the MCSP query from core.Main, and plots the results using plot.py if output is available in results/.
+
+## 📁 Output Directory Structure
+
+Compiled Classes: out/
+Results: results/<dataset>.csv
+Plots: results/<dataset>.png (if generated)
+
+Make sure your dataset is present in the data/ folder and the plot.py script is set up correctly with matplotlib and pandas.
 
 ## 📊 Output and Results
 
@@ -87,8 +115,7 @@ Plots (if plot_results.py is used): results/*.png
 
 To plot query time and disk access:
 
-    cd scripts/
-    python plot_results.py
+    python plot.py results/"dataset".csv
 
 Make sure you have matplotlib and pandas installed:
 
@@ -118,6 +145,17 @@ To build and run this project, ensure Java is installed:
     javac -version
 
 Must show Java 8 or later.
+
+## 📂 Datasets
+
+This project has been tested on large-scale graph datasets from both social networks and road networks. Below are the supported datasets and their sources:
+
+UK-2007 (Synthetic_sf)	Web graph of the .uk domain	(https://chato.cl/webspam/datasets/uk2007/links/) 
+Wikipedia	Wikipedia article hyperlink graph	SNAP  (https://snap.stanford.edu/data/wikipedia-article-networks.html)
+Orkut	Social network from Orkut platform	SNAP  (https://snap.stanford.edu/data/com-Orkut.html)
+Twitter	Ego networks from Twitter	SNAP  (https://snap.stanford.edu/data/ego-Twitter.html)
+California	Road network of California	SNAP  (https://snap.stanford.edu/data/roadNet-CA.html)
+Texas	Road network of Texas	SNAP  (https://snap.stanford.edu/data/roadNet-TX.html)
 
 ## 📦 Python (for evaluation plots)
 

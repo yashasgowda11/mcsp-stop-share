@@ -1,26 +1,19 @@
-// src/core/MHPAlgorithm.java
 package core;
 
+import java.util.*;
 import model.State;
 
-import java.util.*;
-
 public class MHPAlgorithm {
-    private final Graph graph;
-    private final int numCriteria;
-    private final int source;
-    private final int target;
-    private final int maxMemoryPartitions;
-    private int diskReads = 0;
-    private int cacheHits = 0;
 
-    public int getDiskReads() {
-        return diskReads;
-    }
+    private final Graph graph;                // Input graph
+    private final int numCriteria;            // Number of cost dimensions
+    private final int source;                 // Source node
+    private final int target;                 // Target node
+    private final int maxMemoryPartitions;    // Max number of partitions to simulate memory constraint
 
-    public int getCacheHits() {
-        return cacheHits;
-    }
+    private int diskReads = 0;                // Count of disk reads
+    private int cacheHits = 0;                // Count of cache hits
+    private double[] costs;                   // Cost results per criterion
 
     public MHPAlgorithm(Graph graph, int numCriteria, int source, int target, int maxMemoryPartitions) {
         this.graph = graph;
@@ -28,84 +21,73 @@ public class MHPAlgorithm {
         this.source = source;
         this.target = target;
         this.maxMemoryPartitions = maxMemoryPartitions;
+        this.costs = new double[numCriteria];
+        Arrays.fill(this.costs, Double.POSITIVE_INFINITY); // Initialize all costs to infinity
     }
 
+    // Run the shortest path algorithm for all criteria
     public void run() {
-        PriorityQueue<State>[] queues = new PriorityQueue[numCriteria];
-        Set<Integer>[] visited = new Set[numCriteria];
-        for (int i = 0; i < numCriteria; i++) {
-            queues[i] = new PriorityQueue<>();
-            visited[i] = new HashSet<>();
-            queues[i].offer(new State(source, 0));
+        for (int criterion = 0; criterion < numCriteria; criterion++) {
+            runSingleCriterion(criterion);
         }
+    }
 
-        Set<Integer> inMemory = new LinkedHashSet<>(); // Simulate memory
-        int ioHits = 0;
-        Set<Integer> sharedAccess = new HashSet<>();
-        Map<Integer, Set<Integer>> partitionUsers = new HashMap<>();
+    // Run Dijkstra for a single cost criterion with simulated memory
+    private void runSingleCriterion(int index) {
+        Set<Integer> inMemory = new HashSet<>();          // Simulated in-memory partition set
+        PriorityQueue<State> pq = new PriorityQueue<>();  // Min-heap for Dijkstra
+        Map<Integer, Double> dist = new HashMap<>();      // Distance map
 
-        while (true) {
-            boolean allEmpty = true;
+        pq.offer(new State(source, 0));
+        dist.put(source, 0.0);
 
-            for (int i = 0; i < numCriteria; i++) {
-                PriorityQueue<State> queue = queues[i];
-                while (!queue.isEmpty()) {
-                    allEmpty = false;
-                    State curr = queue.peek();
-                    int partitionId = curr.vertex / 2;
+        while (!pq.isEmpty()) {
+            State curr = pq.poll();
+            int u = curr.vertex;
 
-                    if (!inMemory.contains(partitionId)) {
-                        ioHits++;
-                        inMemory.add(partitionId);
-
-                        // Simulate memory eviction
-                        if (inMemory.size() > maxMemoryPartitions) {
-                            Iterator<Integer> it = inMemory.iterator();
-                            int evicted = it.next();
-                            it.remove();
-                            //System.out.println("Evicting partition: " + evicted);
-                        }
-                    }
-
-                    // Track which criteria accessed which partitions
-                    partitionUsers.computeIfAbsent(partitionId, k -> new HashSet<>()).add(i);
-                    if (partitionUsers.get(partitionId).size() > 1) {
-                        sharedAccess.add(partitionId);
-                    }
-
-                    State state = queue.poll();
-                    if (visited[i].contains(state.vertex)) continue;
-                    visited[i].add(state.vertex);
-
-                    if (state.vertex == target) {
-                        System.out.println("[MHP] Criterion " + i + " reached target.");
-                        break;
-                    }
-
-                    for (Edge edge : graph.getEdges(state.vertex)) {
-                        if (!visited[i].contains(edge.to)) {
-                            queue.offer(new State(edge.to, state.cost + edge.weights[i]));
-                        }
-                    }
-
-                    // Stop if next vertex needs partition not in memory
-                    if (!queue.isEmpty()) {
-                        int nextPartition = queue.peek().vertex / 2;
-                        if (!inMemory.contains(nextPartition)) {
-                            break; // Let others proceed
-                        }
-                    }
-                }
+            if (u == target) {
+                costs[index] = curr.cost; // Target reached
+                return;
             }
 
-            if (allEmpty) break;
+            for (Edge e : graph.getEdges(u)) {
+                int v = e.to;
+                double weight = e.weights[index];
+                double newCost = curr.cost + weight;
+
+                if (!dist.containsKey(v) || newCost < dist.get(v)) {
+                    dist.put(v, newCost);
+                    pq.offer(new State(v, newCost));
+                }
+
+                // Track disk reads vs cache hits
+                if (inMemory.contains(u)) {
+                    cacheHits++; // Already in memory
+                } else {
+                    diskReads++; // Simulate disk read
+                    if (inMemory.size() >= maxMemoryPartitions) {
+                        // Evict one element arbitrarily (FIFO-like)
+                        Iterator<Integer> it = inMemory.iterator();
+                        it.next(); it.remove();
+                    }
+                    inMemory.add(u); // Add to memory
+                }
+            }
         }
+    }
 
-        diskReads = inMemory.size();
-        cacheHits = sharedAccess.size();
+    // Getter for disk read count
+    public int getDiskReads() {
+        return diskReads;
+    }
 
-        System.out.println("\n[MHP] Total Partitions Accessed: " + ioHits);
-        System.out.println("[MHP] Shared Partition Access: " + sharedAccess.size());
-        //System.out.println("[MHP] Partitions with Shared Access: " + sharedAccess);
+    // Getter for cache hit count
+    public int getCacheHits() {
+        return cacheHits;
+    }
+
+    // Getter for final cost values
+    public double[] getCosts() {
+        return costs;
     }
 }

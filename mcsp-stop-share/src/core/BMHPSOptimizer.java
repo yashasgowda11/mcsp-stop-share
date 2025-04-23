@@ -7,51 +7,65 @@ import java.util.concurrent.*;
 
 public class BMHPSOptimizer {
 
-    private static final int THREAD_COUNT = Runtime.getRuntime().availableProcessors();
+    private static final int THREAD_COUNT = Runtime.getRuntime().availableProcessors(); // Number of threads for parallelism
 
-    public static OverlayGraph buildOverlayGraph(Map<Integer, List<Integer>> partitions, Graph graph, int criterionIndex) {
+    // Builds the overlay graph in parallel using intra-partition Dijkstra
+    public static OverlayGraph buildOverlayGraph(Map<Integer, List<Integer>> partitions, Graph graph, int numCriteria) {
         System.out.println("[BMHPS] Starting parallel overlay graph construction using intra-partition Dijkstra...");
 
         OverlayGraph overlay = new OverlayGraph();
-        ExecutorService executor = Executors.newFixedThreadPool(THREAD_COUNT);
+        ExecutorService executor = Executors.newFixedThreadPool(THREAD_COUNT); // Thread pool for parallel tasks
         List<Future<OverlayGraph>> futures = new ArrayList<>();
 
         for (Map.Entry<Integer, List<Integer>> entry : partitions.entrySet()) {
             int partitionId = entry.getKey();
             List<Integer> nodes = entry.getValue();
 
+            // Submit task for each partition
             Future<OverlayGraph> future = executor.submit(() -> {
                 System.out.println("[Thread] Processing partition " + partitionId);
                 OverlayGraph localOverlay = new OverlayGraph();
-                Set<Integer> boundary = findBoundaryNodes(nodes, graph);
-                System.out.println("[Thread] Partition " + partitionId + " has " + boundary.size() + " boundary nodes.");
-                if (boundary.size() <= 1) return localOverlay;
+                Set<Integer> boundary = findBoundaryNodes(nodes, graph); // Identify boundary nodes
+                if (boundary.size() <= 1) return localOverlay; // Skip small partitions
 
                 List<Integer> boundaryList = new ArrayList<>(boundary);
-                int SAMPLE_BOUNDARY_LIMIT = 10;  
-                int limit = Math.min(SAMPLE_BOUNDARY_LIMIT, boundaryList.size());
-                for (int i = 0; i < limit; i++) {
+                int SAMPLE_LIMIT = Math.min(30, boundaryList.size()); // Limit boundary samples
+
+                for (int i = 0; i < SAMPLE_LIMIT; i++) {
                     int src = boundaryList.get(i);
-                    Map<Integer, Double> localDistances = intraPartitionDijkstra(graph, src, new HashSet<>(nodes), criterionIndex);
-                    for (int j = 0; j < boundaryList.size(); j++) {
-                        int dst = boundaryList.get(j);
-                        if (src < dst && localDistances.containsKey(dst)) {
-                            localOverlay.addEdge(src, dst, new double[]{localDistances.get(dst)});
-                            localOverlay.addEdge(dst, src, new double[]{localDistances.get(dst)});
-                            
+                    Map<Integer, double[]> allWeights = new HashMap<>();
+
+                    // Run Dijkstra for each criterion
+                    for (int c = 0; c < numCriteria; c++) {
+                        Map<Integer, Double> dist = dijkstra(graph, src, new HashSet<>(nodes), c);
+                        for (Map.Entry<Integer, Double> e : dist.entrySet()) {
+                            int dst = e.getKey();
+                            allWeights.putIfAbsent(dst, new double[numCriteria]);
+                            allWeights.get(dst)[c] = e.getValue(); // Store weight per criterion
+                        }
+                    }
+
+                    // Add bidirectional edges to local overlay
+                    for (Map.Entry<Integer, double[]> e : allWeights.entrySet()) {
+                        int dst = e.getKey();
+                        if (src < dst) {
+                            localOverlay.addEdge(src, dst, e.getValue());
+                            localOverlay.addEdge(dst, src, e.getValue());
                         }
                     }
                 }
+
                 return localOverlay;
             });
 
             futures.add(future);
         }
 
-        executor.shutdown();
+        executor.shutdown(); // No more tasks submitted
         try {
             for (Future<OverlayGraph> f : futures) {
                 OverlayGraph local = f.get();
+                // Merge local overlays into the final overlay
                 for (int u : local.getNodes()) {
                     for (Edge e : local.getEdges(u)) {
                         overlay.addEdge(u, e.to, e.weights);
@@ -62,20 +76,14 @@ public class BMHPSOptimizer {
             System.err.println("[BMHPS] Error during parallel processing: " + e.getMessage());
         }
 
-        System.out.println("[BMHPS] Overlay Diagnostics:");
-for (int u : overlay.getNodes()) {
-    List<Edge> neighbors = overlay.getEdges(u);
-    System.out.printf(" - Node %d → %d neighbors\n", u, neighbors.size());
-}
-
         System.out.println("[BMHPS] Finished overlay graph with " + overlay.getNodes().size() + " nodes.");
         return overlay;
     }
 
+    // Finds boundary nodes that connect to nodes outside the partition
     private static Set<Integer> findBoundaryNodes(List<Integer> nodes, Graph graph) {
         Set<Integer> nodeSet = new HashSet<>(nodes);
         Set<Integer> boundary = new HashSet<>();
-
         for (int node : nodes) {
             for (Edge e : graph.getEdges(node)) {
                 if (!nodeSet.contains(e.to)) {
@@ -87,7 +95,8 @@ for (int u : overlay.getNodes()) {
         return boundary;
     }
 
-    private static Map<Integer, Double> intraPartitionDijkstra(Graph graph, int source, Set<Integer> partitionSet, int index) {
+    // Dijkstra restricted to nodes within the partition for one cost criterion
+    private static Map<Integer, Double> dijkstra(Graph graph, int source, Set<Integer> partitionSet, int index) {
         Map<Integer, Double> dist = new HashMap<>();
         PriorityQueue<State> pq = new PriorityQueue<>();
         dist.put(source, 0.0);
@@ -100,7 +109,7 @@ for (int u : overlay.getNodes()) {
 
             for (Edge e : graph.getEdges(u)) {
                 int v = e.to;
-                if (!partitionSet.contains(v)) continue;  // Only traverse inside partition
+                if (!partitionSet.contains(v)) continue; // Skip if not in partition
                 double newCost = cost + e.weights[index];
                 if (!dist.containsKey(v) || newCost < dist.get(v)) {
                     dist.put(v, newCost);
@@ -108,7 +117,6 @@ for (int u : overlay.getNodes()) {
                 }
             }
         }
-
         return dist;
     }
 }

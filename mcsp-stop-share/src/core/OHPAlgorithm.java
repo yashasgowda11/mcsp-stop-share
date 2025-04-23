@@ -1,19 +1,18 @@
-// src/core/OHPAlgorithm.java
 package core;
 
 import model.State;
 import java.util.*;
 
 public class OHPAlgorithm {
+    private final Graph graph;                // Input graph
+    private final int numCriteria;            // Number of cost dimensions
+    private final int source;                 // Source node
+    private final int target;                 // Target node
+    private final int maxMemoryPartitions;    // Max partitions (not used here)
 
-    private final Graph graph;
-    private final int numCriteria;
-    private final int source;
-    private final int target;
-    private final int maxMemoryPartitions;
-
-    private int diskReads = 0;
-    private int cacheHits = 0;
+    private int diskReads = 0;                // Disk access counter
+    private int cacheHits = 0;                // Cache access counter
+    private double[] costs;                   // Stores result costs for each criterion
 
     public OHPAlgorithm(Graph graph, int numCriteria, int source, int target, int maxMemoryPartitions) {
         this.graph = graph;
@@ -21,86 +20,59 @@ public class OHPAlgorithm {
         this.source = source;
         this.target = target;
         this.maxMemoryPartitions = maxMemoryPartitions;
+        this.costs = new double[numCriteria];
+        Arrays.fill(costs, Double.POSITIVE_INFINITY); // Initialize all costs to infinity
     }
 
+    // Run one-hop Dijkstra for each criterion independently
+    public void run() {
+        for (int i = 0; i < numCriteria; i++) {
+            PriorityQueue<State> pq = new PriorityQueue<>();  // Min-heap for Dijkstra
+            Map<Integer, Double> dist = new HashMap<>();       // Distance tracker
+            Set<Integer> visited = new HashSet<>();            // Visited set
+
+            pq.offer(new State(source, 0.0));
+            dist.put(source, 0.0);
+
+            while (!pq.isEmpty()) {
+                State curr = pq.poll();
+                if (visited.contains(curr.vertex)) continue;
+                visited.add(curr.vertex);
+
+                if (curr.vertex == target) {
+                    costs[i] = curr.cost; // Target found
+                    break;
+                }
+
+                for (Edge edge : graph.getEdges(curr.vertex)) {
+                    diskReads++; // Simulate disk access
+                    int v = edge.to;
+                    double weight = edge.weights[i];
+                    double newCost = curr.cost + weight;
+
+                    if (!dist.containsKey(v) || newCost < dist.get(v)) {
+                        dist.put(v, newCost);
+                        pq.offer(new State(v, newCost));
+                    } else {
+                        cacheHits++; // No update needed, considered cache access
+                    }
+                }
+            }
+        }
+    }
+
+    // Getter for result costs
+    public double[] getCosts() {
+        return costs;
+    }
+
+    // Getter for disk reads
     public int getDiskReads() {
         return diskReads;
     }
 
+    // Getter for cache hits
     public int getCacheHits() {
         return cacheHits;
-    }
-
-    public void run() {
-        PriorityQueue<State>[] queues = new PriorityQueue[numCriteria];
-        Set<Integer>[] visited = new Set[numCriteria];
-        for (int i = 0; i < numCriteria; i++) {
-            queues[i] = new PriorityQueue<>();
-            visited[i] = new HashSet<>();
-            queues[i].offer(new State(source, 0));
-        }
-
-        Set<Integer> inMemory = new LinkedHashSet<>();  // LRU simulation
-        Set<Integer> sharedAccess = new HashSet<>();
-        Map<Integer, Set<Integer>> partitionUsers = new HashMap<>();
-
-        boolean[] done = new boolean[numCriteria];
-
-        while (true) {
-            boolean allDone = true;
-
-            for (int i = 0; i < numCriteria; i++) {
-                if (done[i]) continue;
-                allDone = false;
-
-                PriorityQueue<State> queue = queues[i];
-                if (!queue.isEmpty()) {
-                    State curr = queue.poll();
-                    int v = curr.vertex;
-
-                    if (visited[i].contains(v)) continue;
-                    visited[i].add(v);
-
-                    int partitionId = v / 200; // Use same partitioning as in PartitionGenerator
-
-                    // Simulate memory access
-                    if (!inMemory.contains(partitionId)) {
-                        diskReads++;
-                        inMemory.add(partitionId);
-                        if (inMemory.size() > maxMemoryPartitions) {
-                            Iterator<Integer> it = inMemory.iterator();
-                            it.next();
-                            it.remove();
-                        }
-                    } else {
-                        cacheHits++;
-                    }
-
-                    // Track shared access
-                    partitionUsers.computeIfAbsent(partitionId, k -> new HashSet<>()).add(i);
-                    if (partitionUsers.get(partitionId).size() > 1) {
-                        sharedAccess.add(partitionId);
-                    }
-
-                    if (v == target) {
-                        System.out.println("[OHP] Criterion " + i + " reached target.");
-                        done[i] = true;
-                        continue;
-                    }
-
-                    for (Edge e : graph.getEdges(v)) {
-                        int neighbor = e.to;
-                        if (!visited[i].contains(neighbor)) {
-                            queue.offer(new State(neighbor, curr.cost + e.weights[i]));
-                        }
-                    }
-                }
-            }
-
-            if (allDone) break;
-        }
-
-        System.out.println("Total Partitions Accessed: " + diskReads);
-        System.out.println("Shared Partitions (I/O optimization): " + sharedAccess.size());
     }
 }

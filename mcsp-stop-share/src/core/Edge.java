@@ -2,10 +2,10 @@
 package core;
 
 public class Edge {
-    public int from;
-    public int to;
-    public double[] weights;
-    public double waveWeight = 0.0; 
+    public int from;               // Source vertex
+    public int to;                 // Destination vertex
+    public double[] weights;      // Multi-criteria weights for the edge
+    public double waveWeight = 0.0; // Optional additional weight (used in some algorithms)
 
     public Edge(int from, int to, double[] weights) {
         this.from = from;
@@ -13,6 +13,7 @@ public class Edge {
         this.weights = weights;
     }
 
+    // Returns a string representation of the edge and its weights
     @Override
     public String toString() {
         StringBuilder sb = new StringBuilder();
